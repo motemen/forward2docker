@@ -1,0 +1,81 @@
+#!/bin/sh
+
+# % ./forward2docker <path to Dockerfile>
+
+set -e
+
+dockerfile=$1
+
+test -f "$dockerfile"
+
+test -f "$HOME/.forward2docker/profile" && . "$HOME/.forward2docker/profile"
+
+BOOT2DOCKER=${BOOT2DOCKER-./boot2docker}
+PORT_OFFSET=${PORT_OFFSET-10000}
+
+__ssh() {
+  ssh_args="$@"
+
+  expect -c "
+spawn $BOOT2DOCKER ssh $ssh_args
+expect password:
+send \"tcuser\\r\"
+interact
+"
+}
+
+### Initialize boot2docker
+
+if [ ! -x $BOOT2DOCKER ]; then
+    curl -# https://raw.github.com/steeve/boot2docker/master/boot2docker > boot2docker
+    chmod +x boot2docker
+fi
+
+if ! $BOOT2DOCKER status; then
+    $BOOT2DOCKER init || true
+    $BOOT2DOCKER up   || true
+    $BOOT2DOCKER status
+fi
+
+export DOCKER_HOST=localhost
+
+echo '[forward2docker] boot2docker initialized.' >&2
+
+### Set up image/container
+
+echo '[forward2docker] Building image...' >&2
+
+docker build - < $dockerfile
+
+image=$(docker images -q | head -1)
+
+echo "[forward2docker] Starting container..." >&2
+
+container=$(
+
+docker run -d "$image"
+
+)
+
+port_forwards=$(
+
+docker inspect -format='{{with $n:=.NetworkSettings}}{{range $port,$:=$n.Ports}}{{$n.IPAddress}} {{$port}}{{"\n"}}{{end}}{{end}}' "$container" | while read addr port; do
+    if [ -n "$port" ]; then
+        port=${port%/tcp}
+        local_port=$(($port + $PORT_OFFSET))
+        echo "-L$local_port:$addr:$port"
+        echo "[forward2docker] $container: listen on port $local_port" >&2
+    fi
+done
+
+)
+
+echo "[forward2docker] Starting port forwarding..." >&2
+
+__ssh $port_forwards -- echo Success! '&&' docker logs -f "$container" || true
+
+echo "[forward2docker] Cleaning up container..." >&2
+
+docker stop "$container" > /dev/null || true
+docker kill "$container" > /dev/null || true
+docker rm   "$container" > /dev/null || true
