@@ -50,6 +50,8 @@ log 'boot2docker initialized.'
 
 containers=
 
+__counter=0
+
 while [ $# -gt 0 ]; do
     dockerfile=$1
     shift
@@ -61,7 +63,7 @@ while [ $# -gt 0 ]; do
 
     log 'Building image...'
 
-    dockerfile_dir=${TMPDIR-/tmp}/forward2docker.$$.$RANDOM
+    dockerfile_dir=${TMPDIR-/tmp}/forward2docker.$$.$((__counter=__counter+1))
     mkdir -p "$dockerfile_dir"
     cp "$dockerfile" "$dockerfile_dir/Dockerfile"
     docker build "$dockerfile_dir"
