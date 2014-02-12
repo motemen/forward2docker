@@ -13,20 +13,16 @@ log() {
 
 set -e
 
-dockerfile=$1
-
-test -f "$dockerfile" || die "Usage: $0 <dockerfile>"
-
 test -f "$HOME/.forward2docker/profile" && . "$HOME/.forward2docker/profile"
 
 BOOT2DOCKER=${BOOT2DOCKER-$(dirname $0)/boot2docker}
 PORT_OFFSET=${PORT_OFFSET-10000}
 
 __ssh() {
-  ssh_args="$@"
+  ssh_args=$@
 
   expect -c "
-spawn $BOOT2DOCKER ssh $ssh_args
+spawn -noecho $BOOT2DOCKER ssh $ssh_args
 expect password:
 send \"tcuser\\r\"
 interact
@@ -52,42 +48,55 @@ log 'boot2docker initialized.'
 
 ### Set up image/container
 
-log 'Building image...'
+containers=
 
-dockerfile_dir=${TMPDIR-/tmp}/forward2docker.$$.$RANDOM
-mkdir -p "$dockerfile_dir"
-cp "$dockerfile" "$dockerfile_dir/Dockerfile"
-docker build "$dockerfile_dir"
+while [ $# -gt 0 ]; do
+    dockerfile=$1
+    shift
 
-image=$(docker images -q | head -1)
-
-log 'Starting container...'
-
-container=$(
-
-docker run -d "$image"
-
-)
-
-port_forwards=$(
-
-docker inspect -format='{{with $n:=.NetworkSettings}}{{range $port,$:=$n.Ports}}{{$n.IPAddress}} {{$port}}{{"\n"}}{{end}}{{end}}' "$container" | while read addr port; do
-    if [ -n "$port" ]; then
-        port=${port%/tcp}
-        local_port=$(($port + $PORT_OFFSET))
-        echo "-L$local_port:$addr:$port"
-        log "$container: listen on port $local_port"
+    if [ ! -f "$dockerfile" ]; then
+        log "[error] not a file: $dockerfile"
+        continue
     fi
+
+    log 'Building image...'
+
+    dockerfile_dir=${TMPDIR-/tmp}/forward2docker.$$.$RANDOM
+    mkdir -p "$dockerfile_dir"
+    cp "$dockerfile" "$dockerfile_dir/Dockerfile"
+    docker build "$dockerfile_dir"
+
+    image=$(docker images -q | head -1)
+
+    log 'Starting container...'
+
+    container=$(
+        docker run -d "$image"
+    )
+    containers="$containers $container"
 done
 
+if [ -z "$containers" ]; then
+    die 'Could not start any containers. abort.'
+fi
+
+port_forwards=$(
+    docker inspect -format='{{with $root:=.}}{{with $n:=.NetworkSettings}}{{range $port,$:=$n.Ports}}{{$root.ID}} {{$n.IPAddress}} {{$port}}{{"\n"}}{{end}}{{end}}{{end}}' $containers | while read id addr port; do
+        if [ -n "$port" ]; then
+            port=${port%/tcp}
+            local_port=$(($port + $PORT_OFFSET))
+            echo "-L$local_port:$addr:$port"
+            log "$id: listen on port $local_port"
+        fi
+    done
 )
 
 log 'Starting port forwarding...'
 
-__ssh $port_forwards -- echo Success! '&&' docker logs -f "$container" || true
+__ssh $port_forwards -- "echo Success! \\; for container in $containers \\; do docker logs -f \\\$container & done \\; wait" || true
 
 log 'Cleaning up container...'
 
-docker stop "$container" > /dev/null || true
-docker kill "$container" > /dev/null || true
-docker rm   "$container" > /dev/null || true
+docker stop $containers > /dev/null || true
+docker kill $containers > /dev/null || true
+docker rm   $containers > /dev/null || true
