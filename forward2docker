@@ -45,7 +45,10 @@ echo '[forward2docker] boot2docker initialized.' >&2
 
 echo '[forward2docker] Building image...' >&2
 
-docker build - < $dockerfile
+dockerfile_dir=${TMPDIR-/tmp}/forward2docker.$$.$RANDOM
+mkdir -p "$dockerfile_dir"
+cp "$dockerfile" "$dockerfile_dir/Dockerfile"
+docker build "$dockerfile_dir"
 
 image=$(docker images -q | head -1)
 
