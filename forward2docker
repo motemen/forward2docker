@@ -2,11 +2,20 @@
 
 # % ./forward2docker <path to Dockerfile>
 
+die() {
+    echo "$@" >&2
+    exit 1
+}
+
+log() {
+    echo "[forward2docker] $@" >&2
+}
+
 set -e
 
 dockerfile=$1
 
-test -f "$dockerfile"
+test -f "$dockerfile" || die "Usage: $0 <dockerfile>"
 
 test -f "$HOME/.forward2docker/profile" && . "$HOME/.forward2docker/profile"
 
@@ -39,11 +48,11 @@ fi
 
 export DOCKER_HOST=localhost
 
-echo '[forward2docker] boot2docker initialized.' >&2
+log 'boot2docker initialized.'
 
 ### Set up image/container
 
-echo '[forward2docker] Building image...' >&2
+log 'Building image...'
 
 dockerfile_dir=${TMPDIR-/tmp}/forward2docker.$$.$RANDOM
 mkdir -p "$dockerfile_dir"
@@ -52,7 +61,7 @@ docker build "$dockerfile_dir"
 
 image=$(docker images -q | head -1)
 
-echo "[forward2docker] Starting container..." >&2
+log 'Starting container...'
 
 container=$(
 
@@ -67,17 +76,17 @@ docker inspect -format='{{with $n:=.NetworkSettings}}{{range $port,$:=$n.Ports}}
         port=${port%/tcp}
         local_port=$(($port + $PORT_OFFSET))
         echo "-L$local_port:$addr:$port"
-        echo "[forward2docker] $container: listen on port $local_port" >&2
+        log "$container: listen on port $local_port"
     fi
 done
 
 )
 
-echo "[forward2docker] Starting port forwarding..." >&2
+log 'Starting port forwarding...'
 
 __ssh $port_forwards -- echo Success! '&&' docker logs -f "$container" || true
 
-echo "[forward2docker] Cleaning up container..." >&2
+log 'Cleaning up container...'
 
 docker stop "$container" > /dev/null || true
 docker kill "$container" > /dev/null || true
