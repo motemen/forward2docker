@@ -10,7 +10,7 @@ test -f "$dockerfile"
 
 test -f "$HOME/.forward2docker/profile" && . "$HOME/.forward2docker/profile"
 
-BOOT2DOCKER=${BOOT2DOCKER-./boot2docker}
+BOOT2DOCKER=${BOOT2DOCKER-$(dirname $0)/boot2docker}
 PORT_OFFSET=${PORT_OFFSET-10000}
 
 __ssh() {
