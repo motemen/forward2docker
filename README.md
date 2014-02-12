@@ -30,7 +30,7 @@ Example
 For example, with [this dockerfile](https://gist.github.com/motemen/8954007):
 
 ```
-% ./forward2docker Dockerfile.2
+% ./forward2docker Dockerfile
 [2014-02-12 20:42:35] boot2docker-vm is running.
 [forward2docker] boot2docker initialized.
 [forward2docker] Building image...
