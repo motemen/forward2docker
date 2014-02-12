@@ -15,7 +15,7 @@ Usage
 -----
 
 ```
-forward2docekr <DOCKERFILE> <DOCKERFILE>...
+forward2docker <DOCKERFILE> <DOCKERFILE>...
 ```
 
 Example
