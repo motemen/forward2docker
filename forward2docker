@@ -23,7 +23,7 @@ BOOT2DOCKER=${BOOT2DOCKER-$(dirname $0)/boot2docker}
 PORT_OFFSET=${PORT_OFFSET-10000}
 
 __ssh() {
-  ssh_args=$@
+  ssh_args=$(echo $* | sed 's/\([;$]\)/\\\1/g')
 
   expect -c "
 spawn -noecho $BOOT2DOCKER ssh $ssh_args
@@ -99,7 +99,7 @@ port_forwards=$(
 
 log 'Starting port forwarding...'
 
-__ssh $port_forwards -- "echo Success! \\; for container in $containers \\; do docker logs -f \\\$container & done \\; wait" || true
+__ssh $port_forwards -- "echo Success! ; for container in $containers ; do docker logs -f \$container & done ; wait" || true
 
 log 'Cleaning up container...'
 
