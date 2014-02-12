@@ -13,6 +13,10 @@ log() {
 
 set -e
 
+if [ $# -eq 0 ]; then
+    die "usage: $0 <DOCKERFILE> ..."
+fi
+
 test -f "$HOME/.forward2docker/profile" && . "$HOME/.forward2docker/profile"
 
 BOOT2DOCKER=${BOOT2DOCKER-$(dirname $0)/boot2docker}
