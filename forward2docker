@@ -36,8 +36,8 @@ interact
 ### Initialize boot2docker
 
 if [ ! -x $BOOT2DOCKER ]; then
-    curl -# https://raw.github.com/steeve/boot2docker/master/boot2docker > boot2docker
-    chmod +x boot2docker
+    curl -# https://raw.github.com/steeve/boot2docker/master/boot2docker > $BOOT2DOCKER
+    chmod +x $BOOT2DOCKER
 fi
 
 if ! $BOOT2DOCKER status; then
