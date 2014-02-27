@@ -36,7 +36,7 @@ interact
 ### Initialize boot2docker
 
 if [ ! -x $BOOT2DOCKER ]; then
-    curl -# https://raw.github.com/steeve/boot2docker/master/boot2docker > $BOOT2DOCKER
+    curl -# https://raw.github.com/boot2docker/boot2docker/master/boot2docker > $BOOT2DOCKER
     chmod +x $BOOT2DOCKER
 fi
 
@@ -46,7 +46,7 @@ if ! $BOOT2DOCKER status; then
     $BOOT2DOCKER status
 fi
 
-export DOCKER_HOST=localhost
+export DOCKER_HOST=tcp://localhost:4243
 
 log 'boot2docker initialized.'
 
