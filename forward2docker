@@ -70,14 +70,12 @@ while [ $# -gt 0 ]; do
     dockerfile_dir=${TMPDIR-/tmp}/forward2docker.$$.$((__counter=__counter+1))
     mkdir -p "$dockerfile_dir"
     cp "$dockerfile" "$dockerfile_dir/Dockerfile"
-    docker build "$dockerfile_dir"
-
-    image=$(docker images -q | head -1)
+    docker build -t "forward2docker/tmp$__counter" "$dockerfile_dir"
 
     log 'Starting container...'
 
     container=$(
-        docker run -d "$image"
+        docker run -d "forward2docker/tmp$__counter"
     )
     containers="$containers $container"
 done
@@ -86,8 +84,10 @@ if [ -z "$containers" ]; then
     die 'Could not start any containers. abort.'
 fi
 
+log "Containers: $containers"
+
 port_forwards=$(
-    docker inspect -format='{{with $root:=.}}{{with $n:=.NetworkSettings}}{{range $port,$:=$n.Ports}}{{$root.ID}} {{$n.IPAddress}} {{$port}}{{"\n"}}{{end}}{{end}}{{end}}' $containers | while read id addr port; do
+    docker inspect --format='{{with $root:=.}}{{with $n:=.NetworkSettings}}{{range $port,$:=$n.Ports}}{{$root.ID}} {{$n.IPAddress}} {{$port}}{{"\n"}}{{end}}{{end}}{{end}}' $containers | while read id addr port; do
         if [ -n "$port" ]; then
             port=${port%/tcp}
             local_port=$(($port + $PORT_OFFSET))
